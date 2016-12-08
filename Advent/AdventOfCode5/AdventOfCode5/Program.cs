@@ -13,6 +13,8 @@ namespace AdventOfCode5
         {
             string input = "wtnhxymk";
             StringBuilder pw = new StringBuilder();
+            char[] finalPw = new char[8];
+            int finalPwCharCount = 0;
 
             using (MD5 md5 = MD5.Create())
             {
@@ -32,12 +34,23 @@ namespace AdventOfCode5
                         //if (pw.Length == 8)
                         //    break;
 
-                        var pol = sb.ToString().Substring(5, 1);
+                        var pos = int.Parse(sb.ToString().Substring(5, 1), System.Globalization.NumberStyles.HexNumber);
                         var pwChar = sb.ToString().Substring(6, 1);
+
+                        if (pos >= 0 && pos < 8 && finalPw[pos] == default(char))
+                        {
+                            finalPw[pos] = pwChar[0];
+                            finalPwCharCount++;
+
+                            Console.WriteLine(pwChar[0]);
+
+                            if (finalPwCharCount == 8)
+                                break;
+                        }
                     }
                 }
             }
-            Console.WriteLine(pw);
+            Console.WriteLine(finalPw);
             Console.ReadLine();
         }
     }
