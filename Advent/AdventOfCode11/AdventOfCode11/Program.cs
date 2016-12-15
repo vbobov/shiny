@@ -102,27 +102,15 @@ namespace AdventOfCode11
         public static bool ContainsState(this List<State> haystack, State needle)
         {
             // ignore elevator
-            return haystack.Where(x => x.Where(y => y.ObjectType != ObjType.E).SequenceEqual(needle.Where(z => z.ObjectType != ObjType.E))).Count() > 0;
-            //return haystack.Where(x => x.SequenceEqual(needle)).Count() > 0;
+            return haystack.Any(x => Program.AreStatesEquivalent(x, needle));
         }
 
         public static bool ContainsRoute(this List<Route> haystack, Route needle)
         {
             foreach (var route in haystack)
             {
-                if (route.Count() != needle.Count())
-                    continue;
-
-                int i;
-                for (i=0;i<route.Count();i++)
-                {
-                    if (!Program.AreStatesEquivalent(route[i], needle[i]))
-                        break;
-                }
-                if (i == route.Count())
-                {
+                if (Program.AreRoutesEquivalent(route, needle))
                     return true;
-                }
             }
             return false;
         }
@@ -134,6 +122,22 @@ namespace AdventOfCode11
         {
             // don't consider the elevator
             return a.Where(x => x.ObjectType != ObjType.E).SequenceEqual(b.Where(y => y.ObjectType != ObjType.E));
+        }
+
+        public static bool AreRoutesEquivalent(Route a, Route b)
+        {
+            if ((a != null && b == null) || (a == null && b != null))
+                return false;
+
+            if (a.Count() != b.Count())
+                return false;
+
+            for (int i=0;i<a.Count();i++)
+            {
+                if (!AreStatesEquivalent(a[i], b[i]))
+                    return false;
+            }
+            return true;
         }
         public static bool IsValidState(State state)
         {
@@ -159,15 +163,32 @@ namespace AdventOfCode11
             Console.WriteLine(sb);
         }
 
+        public static State EndState = new State()
+        {
+            new LabObject() { ObjectType = ObjType.E, Floor = 4 },
+            new LabObject() { Isotope = Element.TM, ObjectType = ObjType.G, Floor = 4 },
+            new LabObject() { Isotope = Element.TM, ObjectType = ObjType.M, Floor = 4 },
+            new LabObject() { Isotope = Element.PU, ObjectType = ObjType.G, Floor = 4 },
+            new LabObject() { Isotope = Element.SR, ObjectType = ObjType.G, Floor = 4 },
+
+            //new LabObject() { Isotope = Element.PU, ObjectType = ObjType.M, Floor = 4 },
+            //new LabObject() { Isotope = Element.SR, ObjectType = ObjType.M, Floor = 4 },
+
+            //new LabObject() { Isotope = Element.PM, ObjectType = ObjType.G, Floor = 4 },
+            //new LabObject() { Isotope = Element.PM, ObjectType = ObjType.M, Floor = 4 },
+            //new LabObject() { Isotope = Element.RU, ObjectType = ObjType.G, Floor = 4 },
+            //new LabObject() { Isotope = Element.RU, ObjectType = ObjType.M, Floor = 4 }
+        };
+
         public static State InitialState = new State()
         {
             new LabObject() { ObjectType = ObjType.E, Floor = 1 },
             new LabObject() { Isotope = Element.TM, ObjectType = ObjType.G, Floor = 1 },
             new LabObject() { Isotope = Element.TM, ObjectType = ObjType.M, Floor = 1 },
             new LabObject() { Isotope = Element.PU, ObjectType = ObjType.G, Floor = 1 },
-            //new LabObject() { Isotope = Element.SR, ObjectType = ObjType.G, Floor = 1 },
+            new LabObject() { Isotope = Element.SR, ObjectType = ObjType.G, Floor = 1 },
 
-            new LabObject() { Isotope = Element.PU, ObjectType = ObjType.M, Floor = 2 },
+            //new LabObject() { Isotope = Element.PU, ObjectType = ObjType.M, Floor = 2 },
             //new LabObject() { Isotope = Element.SR, ObjectType = ObjType.M, Floor = 2 },
 
             //new LabObject() { Isotope = Element.PM, ObjectType = ObjType.G, Floor = 3 },
@@ -176,7 +197,7 @@ namespace AdventOfCode11
             //new LabObject() { Isotope = Element.RU, ObjectType = ObjType.M, Floor = 3 }
         };
 
-        static List<State> GetMovesFromState(State startState)
+        static List<State> GetMovesFromState(State startState, Route currentRoute)
         {
             var validMoves = new List<State>();
             LabObject elevator = startState.First(x => x.ObjectType == ObjType.E);
@@ -211,7 +232,7 @@ namespace AdventOfCode11
                     newState.First(x => x == piece).Floor = floor;
                     newState.First(x => x.ObjectType == ObjType.E).Floor = floor;
 
-                    if (!IsValidState(newState))
+                    if (!IsValidState(newState) || validMoves.ContainsState(newState) || currentRoute.ContainsState(newState))
                         continue;
                     else
                         validMoves.Add(newState);
@@ -228,36 +249,67 @@ namespace AdventOfCode11
                         newState.First(x => x == buddy).Floor = floor;
                         newState.First(x => x.ObjectType == ObjType.E).Floor = floor;
 
-                        if (!IsValidState(newState) || validMoves.ContainsState(newState))
+                        if (!IsValidState(newState) || validMoves.ContainsState(newState) || currentRoute.ContainsState(newState))
                             continue;
                         else
                             validMoves.Add(newState);
                     }
                 }
             }
-
+            Debug.Assert(validMoves.Distinct().Count() == validMoves.Count());
             return validMoves;
         }
 
         public static List<Route> Solutions = new List<Route>();
+        public static int MinSolution = 0;
+        public static List<State> UniqueStates = new List<State>();
 
         static void Main(string[] args)
         {
             Debug.Assert(IsValidState(InitialState));
 
-            PrintState(InitialState);
+            //PrintState(InitialState);
 
             Route initialRoute = new Route();
             initialRoute.Add(InitialState);
 
-            CheckRoute(initialRoute);
+            #region state counting
+            //List<State> allStates = new List<State>();
+            //List<State> statesToCheck = new List<State>();
+            //statesToCheck.Add(InitialState);            
+            //while (statesToCheck.Count() > 0)
+            //{
+            //    var state = statesToCheck[0];
+            //    statesToCheck.RemoveAt(0);
+            //    var movesFromState = GetMovesFromState(state);
+            //    //PrintState(state);
+            //    //Console.ReadLine();
+            //    if (!allStates.Any(x => x.SequenceEqual(state)))
+            //    {
+            //        allStates.Add(state);
+            //    }
+            //    else
+            //        Debug.Assert(false);
 
-            Console.WriteLine($"Solutions: {Solutions.Count()}");
-            foreach (var solution in Solutions)
+            //    foreach (var nextState in movesFromState)
+            //    {
+            //        if (!allStates.Any(x => x.SequenceEqual(nextState)) && !statesToCheck.Any(x => x.SequenceEqual(nextState)))
+            //        {
+            //            statesToCheck.Add(nextState);
+            //        }
+            //    }
+            //    Console.WriteLine($"Total states {allStates.Count()}");
+            //}
+            //Console.WriteLine($"Total states {allStates.Count()}");
+            #endregion
+
+            CheckRoute(initialRoute);
+            Console.WriteLine($"Solutions: {Solutions.Count()}, Lengths: {string.Join(",", Solutions.Select(x => x.Count() - 1))}");
+            var quickest = Solutions.OrderBy(x => x.Count()).First();
             {
-                Console.WriteLine($"Solution {solution.Count() - 1} steps:");
-                solution.ForEach(x => PrintState(x));
-                Console.ReadLine();
+                Console.WriteLine($"Solution {quickest.Count() - 1} steps:");
+                quickest.ForEach(x => PrintState(x));
+                //Console.ReadLine();
             }
             Console.ReadLine();
         }
@@ -271,26 +323,27 @@ namespace AdventOfCode11
             //Console.ReadLine();
 
             // detect if we have won
-            if (currentState.All(x => x.Floor == 4))
+            if (AreStatesEquivalent(currentState, EndState))
             {
                 if (!Solutions.ContainsRoute(route))
                 {
-                    //Console.WriteLine("Found unique solution!");
-                    //Console.ReadLine();
-                    Console.WriteLine($"Solution {route.Count() - 1} steps:");
-                    //route.ForEach(x => PrintState(x));
+                    Console.WriteLine($"Solution found with {route.Count()-1} steps");
                     Console.ReadLine();
                     Solutions.Add(route.Clone());
+                }
+                else
+                {
+                    Debug.Assert(false);
                 }
                 return;
             }
 
-            var allMovesFromHere = GetMovesFromState(currentState);
-            var movesFromHere = allMovesFromHere.Where(x => !route.ContainsState(x));
+            var allMovesFromHere = GetMovesFromState(currentState, route);
+            //var movesFromHere = allMovesFromHere.Where(x => !route.ContainsState(x));
             //Console.WriteLine($"Step {route.Count()} All possible moves: {allMovesFromHere.Count()} excluding backtracks: {movesFromHere.Count()}");
             //Console.ReadLine();
 
-            foreach (var nextMove in movesFromHere)
+            foreach (var nextMove in allMovesFromHere)
             {
                 route.Add(nextMove);
                 CheckRoute(route);
