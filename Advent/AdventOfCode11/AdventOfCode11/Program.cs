@@ -171,13 +171,13 @@ namespace AdventOfCode11
             new LabObject() { Isotope = Element.PU, ObjectType = ObjType.G, Floor = 4 },
             new LabObject() { Isotope = Element.SR, ObjectType = ObjType.G, Floor = 4 },
 
-            //new LabObject() { Isotope = Element.PU, ObjectType = ObjType.M, Floor = 4 },
-            //new LabObject() { Isotope = Element.SR, ObjectType = ObjType.M, Floor = 4 },
+            new LabObject() { Isotope = Element.PU, ObjectType = ObjType.M, Floor = 4 },
+            new LabObject() { Isotope = Element.SR, ObjectType = ObjType.M, Floor = 4 },
 
-            //new LabObject() { Isotope = Element.PM, ObjectType = ObjType.G, Floor = 4 },
-            //new LabObject() { Isotope = Element.PM, ObjectType = ObjType.M, Floor = 4 },
-            //new LabObject() { Isotope = Element.RU, ObjectType = ObjType.G, Floor = 4 },
-            //new LabObject() { Isotope = Element.RU, ObjectType = ObjType.M, Floor = 4 }
+            new LabObject() { Isotope = Element.PM, ObjectType = ObjType.G, Floor = 4 },
+            new LabObject() { Isotope = Element.PM, ObjectType = ObjType.M, Floor = 4 },
+            new LabObject() { Isotope = Element.RU, ObjectType = ObjType.G, Floor = 4 },
+            new LabObject() { Isotope = Element.RU, ObjectType = ObjType.M, Floor = 4 }
         };
 
         public static State InitialState = new State()
@@ -188,13 +188,13 @@ namespace AdventOfCode11
             new LabObject() { Isotope = Element.PU, ObjectType = ObjType.G, Floor = 1 },
             new LabObject() { Isotope = Element.SR, ObjectType = ObjType.G, Floor = 1 },
 
-            //new LabObject() { Isotope = Element.PU, ObjectType = ObjType.M, Floor = 2 },
-            //new LabObject() { Isotope = Element.SR, ObjectType = ObjType.M, Floor = 2 },
+            new LabObject() { Isotope = Element.PU, ObjectType = ObjType.M, Floor = 2 },
+            new LabObject() { Isotope = Element.SR, ObjectType = ObjType.M, Floor = 2 },
 
-            //new LabObject() { Isotope = Element.PM, ObjectType = ObjType.G, Floor = 3 },
-            //new LabObject() { Isotope = Element.PM, ObjectType = ObjType.M, Floor = 3 },
-            //new LabObject() { Isotope = Element.RU, ObjectType = ObjType.G, Floor = 3 },
-            //new LabObject() { Isotope = Element.RU, ObjectType = ObjType.M, Floor = 3 }
+            new LabObject() { Isotope = Element.PM, ObjectType = ObjType.G, Floor = 3 },
+            new LabObject() { Isotope = Element.PM, ObjectType = ObjType.M, Floor = 3 },
+            new LabObject() { Isotope = Element.RU, ObjectType = ObjType.G, Floor = 3 },
+            new LabObject() { Isotope = Element.RU, ObjectType = ObjType.M, Floor = 3 }
         };
 
         static List<State> GetMovesFromState(State startState, Route currentRoute)
@@ -261,6 +261,7 @@ namespace AdventOfCode11
         }
 
         public static List<Route> Solutions = new List<Route>();
+        public static List<State> DeadEnds = new List<State>();
         public static int MinSolution = 0;
         public static List<State> UniqueStates = new List<State>();
 
@@ -308,13 +309,13 @@ namespace AdventOfCode11
             var quickest = Solutions.OrderBy(x => x.Count()).First();
             {
                 Console.WriteLine($"Solution {quickest.Count() - 1} steps:");
-                quickest.ForEach(x => PrintState(x));
+                //quickest.ForEach(x => PrintState(x));
                 //Console.ReadLine();
             }
             Console.ReadLine();
         }
 
-        static void CheckRoute(Route route)
+        static bool CheckRoute(Route route)
         {
             // includes move that was made to get here
             var currentState = route.Last();
@@ -327,15 +328,15 @@ namespace AdventOfCode11
             {
                 if (!Solutions.ContainsRoute(route))
                 {
-                    Console.WriteLine($"Solution found with {route.Count()-1} steps");
-                    Console.ReadLine();
+                    //Console.WriteLine($"Solution found with {route.Count()-1} steps");
+                    //Console.ReadLine();
                     Solutions.Add(route.Clone());
                 }
                 else
                 {
                     Debug.Assert(false);
                 }
-                return;
+                return true;
             }
 
             var allMovesFromHere = GetMovesFromState(currentState, route);
@@ -345,10 +346,22 @@ namespace AdventOfCode11
 
             foreach (var nextMove in allMovesFromHere)
             {
+                if (DeadEnds.ContainsState(nextMove))
+                {
+                    continue;
+                }
                 route.Add(nextMove);
-                CheckRoute(route);
+                
+                bool solved = CheckRoute(route);
+                if (!solved)
+                {
+                    DeadEnds.Add(route.Last());
+                }
                 route.RemoveAt(route.Count() - 1);
+                
+                
             }
+            return false;
         }
     }
 }
