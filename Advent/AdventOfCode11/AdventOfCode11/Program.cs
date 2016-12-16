@@ -50,7 +50,7 @@ namespace AdventOfCode11
 
         public override Int32 GetHashCode()
         {
-            return (ObjectType.ToString() + Isotope.ToString()).GetHashCode() + Floor.GetHashCode();
+            return ObjectType.GetHashCode() * Isotope.GetHashCode() * Floor.GetHashCode();
         }
 
         public override String ToString()
@@ -409,7 +409,9 @@ namespace AdventOfCode11
             var pq = new PriorityQueue<StateNode>();
             pq.Enqueue(startState);
 
-            var knownStates = new List<StateNode>();
+            //var knownStates = new List<StateNode>();
+            var knownStates = new Dictionary<Int32, bool>();
+            Func<State, int> StateHasher = s => { int hash = 31; s.ForEach(x => hash *= x.GetHashCode()); return hash; };
 
             while (pq.HasItems)
             {
@@ -421,13 +423,14 @@ namespace AdventOfCode11
                     break;
                 }
 
-                knownStates.Add(current);
-
-                var neighborStates = GetMovesFromState(current.state);
+                //knownStates.Add(current);
+                knownStates.Add(StateHasher(current.state), true);
                 
+                var neighborStates = GetMovesFromState(current.state);
+
                 foreach (var neighbor in neighborStates)
                 {
-                    if (!knownStates.Any(x => x.state.SequenceEqual(neighbor)))
+                    if (!knownStates.ContainsKey(StateHasher(neighbor)))
                     {
                         if (!pq.data.Any(x => x.state.SequenceEqual(neighbor)))
                         {
