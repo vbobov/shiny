@@ -50,7 +50,7 @@ namespace AdventOfCode11
 
         public override Int32 GetHashCode()
         {
-            return ObjectType.GetHashCode() * Isotope.GetHashCode() * Floor.GetHashCode();
+            return ObjectType.ToString().GetHashCode() * Isotope.ToString().GetHashCode() * Floor.ToString().GetHashCode();
         }
 
         public override String ToString()
@@ -113,6 +113,23 @@ namespace AdventOfCode11
                     return true;
             }
             return false;
+        }
+
+        public static int ToNumeric(this State state)
+        {
+            int result = 0;
+            // binary representation, 2 bits (floors 0-3) for each object including elevator
+            int shift = 0;
+            foreach (var item in state)
+            {
+                var floor = item.Floor;
+                floor = floor << shift;
+                //Console.WriteLine($"Floor: {floor:X}");
+                result = result + floor;
+                //Console.WriteLine($"Result: {result:X}");
+                shift += 2;
+            }
+            return result;
         }
     }
 
@@ -410,8 +427,7 @@ namespace AdventOfCode11
             pq.Enqueue(startState);
 
             //var knownStates = new List<StateNode>();
-            var knownStates = new Dictionary<Int32, bool>();
-            Func<State, int> StateHasher = s => { int hash = 31; s.ForEach(x => hash *= x.GetHashCode()); return hash; };
+            var knownStates = new Dictionary<Int32, State>();
 
             while (pq.HasItems)
             {
@@ -423,25 +439,26 @@ namespace AdventOfCode11
                     break;
                 }
 
-                //knownStates.Add(current);
-                knownStates.Add(StateHasher(current.state), true);
+                knownStates.Add(current.state.ToNumeric(), current.state);
                 
                 var neighborStates = GetMovesFromState(current.state);
 
                 foreach (var neighbor in neighborStates)
                 {
-                    if (!knownStates.ContainsKey(StateHasher(neighbor)))
+                    if (!knownStates.ContainsKey(neighbor.ToNumeric()))
                     {
-                        if (!pq.data.Any(x => x.state.SequenceEqual(neighbor)))
+                        int foundIndex = pq.data.FindIndex(x => x.state.SequenceEqual(neighbor));
+                        var foundState = foundIndex >= 0 ? pq.data[foundIndex] : null;
+
+                        if (foundIndex == -1)
                         {
                             pq.Enqueue(new StateNode() { state = neighbor, distance = current.distance + 1 });
                         }
-                        else if (pq.data.First(x => x.state.SequenceEqual(neighbor)).distance > current.distance + 1)
+                        else if (foundState.distance > current.distance + 1)
                         {
-                            var node = pq.data.First(x => x.state.SequenceEqual(neighbor));
-                            node.distance = current.distance + 1;
-                            int index = pq.data.IndexOf(node);
-                            pq.MinHeapify(index);
+                            Console.WriteLine("Found state with distance higher than just discovered");
+                            foundState.distance = current.distance + 1;
+                            pq.MinHeapify(foundIndex);
                         }
                     }
                 }
