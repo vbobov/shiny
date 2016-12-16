@@ -116,6 +116,115 @@ namespace AdventOfCode11
         }
     }
 
+    public class PriorityQueue<T> where T: IComparable <T>
+    {
+        public List<T> data;
+        public PriorityQueue()
+        {
+            this.data = new List<T>();
+        }
+
+        public bool HasItems
+        {
+            get
+            {
+                return data.Count > 0;
+            }
+        }
+
+        public void Enqueue(T item)
+        {
+            data.Add(item);
+            int i = data.Count - 1;
+            while (i > 0)
+            {
+                int parent = (i - 1) / 2;
+                if (data[i].CompareTo(data[parent]) >= 0)
+                    break;
+
+                T tmp = data[i];
+                data[i] = data[parent];
+                data[parent] = tmp;
+                i = parent;
+            }
+        }
+
+        public T Dequeue()
+        {
+            if (data.Count == 0)
+                throw new Exception();
+
+            int lastIndex = data.Count - 1;
+            T front = data[0];
+            data[0] = data[lastIndex];
+            data.RemoveAt(lastIndex);
+
+            lastIndex -= 1;
+            int parentIndex = 0;
+
+            while (true)
+            {
+                int childIndex = parentIndex * 2 + 1;
+                if (childIndex > lastIndex)
+                    break;
+                int rightChild = childIndex + 1;
+
+                if (rightChild <= lastIndex && data[rightChild].CompareTo(data[childIndex]) < 0)
+                    childIndex = rightChild;
+
+                if (data[parentIndex].CompareTo(data[childIndex]) <= 0)
+                    break;
+
+                T tmp = data[parentIndex];
+                data[parentIndex] = data[childIndex];
+                data[childIndex] = tmp;
+
+                parentIndex = childIndex;
+            }
+
+            return front;
+        }
+
+        public void MinHeapify(int index)
+        {
+            int smallest;
+            int l = 2 * (index + 1) - 1;
+            int r = 2 * (index + 1) - 1 + 1;
+
+            if (l < data.Count && (data[l].CompareTo(data[index]) < 0))
+            {
+                smallest = l;
+            }
+            else
+            {
+                smallest = index;
+            }
+
+            if (r < data.Count && (data[r].CompareTo(data[smallest]) < 0))
+                smallest = r;
+
+            if (smallest != index)
+            {
+                T tmp = data[index];
+                data[index] = data[smallest];
+                data[smallest] = tmp;
+                MinHeapify(smallest);
+
+            }
+        }
+    }
+
+    public class StateNode : IComparable <StateNode>
+    {
+        public State state { get; set; }
+        public int distance { get; set; }
+
+        Int32 IComparable<StateNode>.CompareTo(StateNode other)
+        {
+            return distance.CompareTo(other.distance);
+        }
+    }
+
     class Program
     {
         public static bool AreStatesEquivalent(State a, State b)
@@ -197,7 +306,7 @@ namespace AdventOfCode11
             new LabObject() { Isotope = Element.RU, ObjectType = ObjType.M, Floor = 3 }
         };
 
-        static List<State> GetMovesFromState(State startState, Route currentRoute)
+        static List<State> GetMovesFromState(State startState)
         {
             var validMoves = new List<State>();
             LabObject elevator = startState.First(x => x.ObjectType == ObjType.E);
@@ -232,7 +341,7 @@ namespace AdventOfCode11
                     newState.First(x => x == piece).Floor = floor;
                     newState.First(x => x.ObjectType == ObjType.E).Floor = floor;
 
-                    if (!IsValidState(newState) || validMoves.ContainsState(newState) || currentRoute.ContainsState(newState))
+                    if (!IsValidState(newState) || validMoves.ContainsState(newState))
                         continue;
                     else
                         validMoves.Add(newState);
@@ -249,7 +358,7 @@ namespace AdventOfCode11
                         newState.First(x => x == buddy).Floor = floor;
                         newState.First(x => x.ObjectType == ObjType.E).Floor = floor;
 
-                        if (!IsValidState(newState) || validMoves.ContainsState(newState) || currentRoute.ContainsState(newState))
+                        if (!IsValidState(newState) || validMoves.ContainsState(newState))
                             continue;
                         else
                             validMoves.Add(newState);
@@ -274,45 +383,120 @@ namespace AdventOfCode11
             Route initialRoute = new Route();
             initialRoute.Add(InitialState);
 
-            #region state counting
-            //List<State> allStates = new List<State>();
-            //List<State> statesToCheck = new List<State>();
-            //statesToCheck.Add(InitialState);            
-            //while (statesToCheck.Count() > 0)
-            //{
-            //    var state = statesToCheck[0];
-            //    statesToCheck.RemoveAt(0);
-            //    var movesFromState = GetMovesFromState(state);
-            //    //PrintState(state);
-            //    //Console.ReadLine();
-            //    if (!allStates.Any(x => x.SequenceEqual(state)))
-            //    {
-            //        allStates.Add(state);
-            //    }
-            //    else
-            //        Debug.Assert(false);
+            //FindStates();
 
-            //    foreach (var nextState in movesFromState)
-            //    {
-            //        if (!allStates.Any(x => x.SequenceEqual(nextState)) && !statesToCheck.Any(x => x.SequenceEqual(nextState)))
-            //        {
-            //            statesToCheck.Add(nextState);
-            //        }
-            //    }
-            //    Console.WriteLine($"Total states {allStates.Count()}");
-            //}
-            //Console.WriteLine($"Total states {allStates.Count()}");
-            #endregion
+            //CheckRoute(initialRoute);
 
-            CheckRoute(initialRoute);
-            Console.WriteLine($"Solutions: {Solutions.Count()}, Lengths: {string.Join(",", Solutions.Select(x => x.Count() - 1))}");
-            var quickest = Solutions.OrderBy(x => x.Count()).First();
+            ShortestPath();
+
+            if (Solutions.Count > 0)
             {
-                Console.WriteLine($"Solution {quickest.Count() - 1} steps:");
-                //quickest.ForEach(x => PrintState(x));
-                //Console.ReadLine();
+                Console.WriteLine($"Solutions: {Solutions.Count()}, Lengths: {string.Join(",", Solutions.Select(x => x.Count() - 1))}");
+                var quickest = Solutions.OrderBy(x => x.Count()).First();
+                {
+                    Console.WriteLine($"Solution {quickest.Count() - 1} steps:");
+                    //quickest.ForEach(x => PrintState(x));
+                    //Console.ReadLine();
+                }
             }
+
             Console.ReadLine();
+        }
+
+        static void ShortestPath()
+        {
+            var startState = new StateNode { state = InitialState, distance = 0 };
+            var pq = new PriorityQueue<StateNode>();
+            pq.Enqueue(startState);
+
+            var knownStates = new List<StateNode>();
+
+            while (pq.HasItems)
+            {
+                var current = pq.Dequeue();
+
+                if (current.state.SequenceEqual(EndState))
+                {
+                    Console.WriteLine($"Found solution in {current.distance} steps");
+                    break;
+                }
+
+                knownStates.Add(current);
+
+                var neighborStates = GetMovesFromState(current.state);
+                
+                foreach (var neighbor in neighborStates)
+                {
+                    if (!knownStates.Any(x => x.state.SequenceEqual(neighbor)))
+                    {
+                        if (!pq.data.Any(x => x.state.SequenceEqual(neighbor)))
+                        {
+                            pq.Enqueue(new StateNode() { state = neighbor, distance = current.distance + 1 });
+                        }
+                        else if (pq.data.First(x => x.state.SequenceEqual(neighbor)).distance > current.distance + 1)
+                        {
+                            var node = pq.data.First(x => x.state.SequenceEqual(neighbor));
+                            node.distance = current.distance + 1;
+                            int index = pq.data.IndexOf(node);
+                            pq.MinHeapify(index);
+                        }
+                    }
+                }
+            }
+            //Console.WriteLine($"States discovered: {knownStates.Count}");
+        }
+
+        static void FindStates()
+        {
+            List<Tuple<State,State>> allStates = new List<Tuple<State,State>>();
+            Queue<Tuple<State, int, State>> statesToCheck = new Queue<Tuple<List<LabObject>, int, List<LabObject>>>();
+            statesToCheck.Enqueue(Tuple.Create<State, int, State>(InitialState, 0, null));
+            int solutionCount = 0;
+
+            while (statesToCheck.Count > 0)
+            {
+                var stateTuple = statesToCheck.Dequeue();
+                var state = stateTuple.Item1;
+                
+                if (AreStatesEquivalent(state, EndState))
+                {
+                    //Console.WriteLine($"Found a solution! Steps: {stateTuple.Item2}");
+                    solutionCount++;
+
+                    var current = Tuple.Create(stateTuple.Item1, stateTuple.Item3);
+                    Route solution = new Route();
+                    while (current.Item1 != InitialState)
+                    {
+                        solution.Add(current.Item1);
+                        current = allStates.First(x => x.Item1.SequenceEqual(current.Item2));
+                    }
+                    solution.Add(InitialState);
+                    solution.Reverse();
+                    Solutions.Add(solution);
+
+                    // don't add end state to seen, so we visit it again
+                    continue;
+                }
+
+                if (!allStates.Any(x => x.Item1.SequenceEqual(state)))
+                {
+                    allStates.Add(Tuple.Create(state, stateTuple.Item3));
+
+                    var movesFromState = GetMovesFromState(state);
+                    foreach (var nextState in movesFromState)
+                    {
+                        if (!allStates.Any(x => x.Item1.SequenceEqual(nextState)) && !statesToCheck.Any(x => x.Item1.SequenceEqual(nextState)))
+                        {
+                            statesToCheck.Enqueue(Tuple.Create(nextState, stateTuple.Item2 + 1, state.Clone()));
+                        }
+                    }
+                }
+                else
+                    Debug.Assert(false);
+
+                //Console.WriteLine($"Total states {allStates.Count()}");
+            }
+            Console.WriteLine($"Total states:{allStates.Count} Solutions:{solutionCount}");
         }
 
         static bool CheckRoute(Route route)
@@ -328,7 +512,7 @@ namespace AdventOfCode11
             {
                 if (!Solutions.ContainsRoute(route))
                 {
-                    //Console.WriteLine($"Solution found with {route.Count()-1} steps");
+                    Console.WriteLine($"Solution found with {route.Count()-1} steps");
                     //Console.ReadLine();
                     Solutions.Add(route.Clone());
                 }
@@ -339,15 +523,16 @@ namespace AdventOfCode11
                 return true;
             }
 
-            var allMovesFromHere = GetMovesFromState(currentState, route);
-            //var movesFromHere = allMovesFromHere.Where(x => !route.ContainsState(x));
+            var allMovesFromHere = GetMovesFromState(currentState);
+            var movesFromHere = allMovesFromHere.Where(x => !route.ContainsState(x));
             //Console.WriteLine($"Step {route.Count()} All possible moves: {allMovesFromHere.Count()} excluding backtracks: {movesFromHere.Count()}");
             //Console.ReadLine();
 
-            foreach (var nextMove in allMovesFromHere)
+            foreach (var nextMove in movesFromHere)
             {
                 if (DeadEnds.ContainsState(nextMove))
                 {
+                    //Console.WriteLine("Dead end!");
                     continue;
                 }
                 route.Add(nextMove);
@@ -355,7 +540,7 @@ namespace AdventOfCode11
                 bool solved = CheckRoute(route);
                 if (!solved)
                 {
-                    DeadEnds.Add(route.Last());
+                    DeadEnds.Add(route.Last().Clone());
                 }
                 route.RemoveAt(route.Count() - 1);
                 
