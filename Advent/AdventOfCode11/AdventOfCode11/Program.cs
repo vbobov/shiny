@@ -495,6 +495,7 @@ namespace AdventOfCode11
 
         static void Main(string[] args)
         {
+            Debug.WriteLine("Starting");
             Debug.Assert(IsValidState(InitialState));
 
             //PrintState(InitialState);
@@ -518,8 +519,8 @@ namespace AdventOfCode11
                     //Console.ReadLine();
                 }
             }
-
             Console.ReadLine();
+            Debug.WriteLine("Exiting");
         }
 
         static void ShortestPath()
@@ -540,6 +541,7 @@ namespace AdventOfCode11
                 {
                     Console.WriteLine($"Found solution in {current.distance} steps");
                     Console.WriteLine($"Time to solve: {DateTime.Now - start}");
+                    Debug.WriteLine($"Found solution in {current.distance} steps");
                     break;
                 }
 
