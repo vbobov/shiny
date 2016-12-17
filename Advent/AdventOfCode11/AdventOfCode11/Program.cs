@@ -17,7 +17,9 @@ namespace AdventOfCode11
         PU,
         RU,
         SR,
-        TM
+        TM,
+        EL,
+        LI
     }
 
     public enum ObjType
@@ -122,14 +124,77 @@ namespace AdventOfCode11
             int shift = 0;
             foreach (var item in state)
             {
-                var floor = item.Floor;
+                var floor = item.Floor - 1;
                 floor = floor << shift;
                 //Console.WriteLine($"Floor: {floor:X}");
+                Debug.Assert((result + floor) == (result ^ floor));
                 result = result + floor;
                 //Console.WriteLine($"Result: {result:X}");
                 shift += 2;
             }
             return result;
+        }
+    }
+
+    public class DictionaryQueue
+    {
+        Dictionary<int, Dictionary<int, StateNode>> byDistance = new Dictionary<int, Dictionary<int, StateNode>>(); // key: distance, value: dictionary<state, distance>
+
+        public void Add(StateNode state)
+        {
+            int distance = state.distance;
+            int stateCode = state.state.ToNumeric();
+
+            if (!byDistance.ContainsKey(distance))
+            {
+                byDistance.Add(distance, new Dictionary<int, StateNode>());
+            }
+            var distDict = byDistance[distance];
+            distDict.Add(stateCode, state);
+        }
+
+        public bool Contains(StateNode s)
+        {
+            var distance = s.distance;
+            if (!byDistance.ContainsKey(distance))
+                return false;
+
+            return byDistance[distance].ContainsKey(s.state.ToNumeric());
+        }
+
+        public StateNode Dequeue()
+        {
+            // get one from the smallest queue
+            var smallestDistKey = byDistance.Keys.OrderBy(x => x).First();
+            KeyValuePair<int,StateNode> first = byDistance[smallestDistKey].First();
+
+            StateNode state = first.Value;
+
+            byDistance[smallestDistKey].Remove(first.Key);
+            return state;
+        }
+
+        public void UpdateDistance(StateNode s, int newDistance)
+        {
+            if (Contains(s))
+            {
+                var stateCode = s.state.ToNumeric();
+                var stateNode = byDistance[s.distance][stateCode];
+                
+                if (stateNode.distance != newDistance)
+                {
+                    int oldDistance = stateNode.distance;
+                    stateNode.distance = newDistance;
+                    byDistance[oldDistance].Remove(stateCode);
+
+                    if (!byDistance.ContainsKey(newDistance))
+                        byDistance.Add(newDistance, new Dictionary<int, StateNode>());
+
+                    byDistance[newDistance].Add(stateCode, stateNode);
+                }
+            }
+            else
+                throw new Exception("Can't update state distance, state not found");
         }
     }
 
@@ -296,6 +361,10 @@ namespace AdventOfCode11
             new LabObject() { Isotope = Element.TM, ObjectType = ObjType.M, Floor = 4 },
             new LabObject() { Isotope = Element.PU, ObjectType = ObjType.G, Floor = 4 },
             new LabObject() { Isotope = Element.SR, ObjectType = ObjType.G, Floor = 4 },
+            new LabObject() { Isotope = Element.EL, ObjectType = ObjType.G, Floor = 1 },
+            new LabObject() { Isotope = Element.EL, ObjectType = ObjType.M, Floor = 1 },
+            new LabObject() { Isotope = Element.LI, ObjectType = ObjType.G, Floor = 1 },
+            new LabObject() { Isotope = Element.LI, ObjectType = ObjType.M, Floor = 1 },
 
             new LabObject() { Isotope = Element.PU, ObjectType = ObjType.M, Floor = 4 },
             new LabObject() { Isotope = Element.SR, ObjectType = ObjType.M, Floor = 4 },
@@ -304,6 +373,7 @@ namespace AdventOfCode11
             new LabObject() { Isotope = Element.PM, ObjectType = ObjType.M, Floor = 4 },
             new LabObject() { Isotope = Element.RU, ObjectType = ObjType.G, Floor = 4 },
             new LabObject() { Isotope = Element.RU, ObjectType = ObjType.M, Floor = 4 }
+
         };
 
         public static State InitialState = new State()
@@ -313,6 +383,10 @@ namespace AdventOfCode11
             new LabObject() { Isotope = Element.TM, ObjectType = ObjType.M, Floor = 1 },
             new LabObject() { Isotope = Element.PU, ObjectType = ObjType.G, Floor = 1 },
             new LabObject() { Isotope = Element.SR, ObjectType = ObjType.G, Floor = 1 },
+            new LabObject() { Isotope = Element.EL, ObjectType = ObjType.G, Floor = 1 },
+            new LabObject() { Isotope = Element.EL, ObjectType = ObjType.M, Floor = 1 },
+            new LabObject() { Isotope = Element.LI, ObjectType = ObjType.G, Floor = 1 },
+            new LabObject() { Isotope = Element.LI, ObjectType = ObjType.M, Floor = 1 },
 
             new LabObject() { Isotope = Element.PU, ObjectType = ObjType.M, Floor = 2 },
             new LabObject() { Isotope = Element.SR, ObjectType = ObjType.M, Floor = 2 },
@@ -429,6 +503,8 @@ namespace AdventOfCode11
             //var knownStates = new List<StateNode>();
             var knownStates = new Dictionary<Int32, State>();
 
+            var start = DateTime.Now;
+
             while (pq.HasItems)
             {
                 var current = pq.Dequeue();
@@ -436,6 +512,7 @@ namespace AdventOfCode11
                 if (current.state.SequenceEqual(EndState))
                 {
                     Console.WriteLine($"Found solution in {current.distance} steps");
+                    Console.WriteLine($"Time to solve: {DateTime.Now - start}");
                     break;
                 }
 
