@@ -140,6 +140,19 @@ namespace AdventOfCode11
     {
         Dictionary<int, Dictionary<int, StateNode>> byDistance = new Dictionary<int, Dictionary<int, StateNode>>(); // key: distance, value: dictionary<state, distance>
 
+        public bool HasItems
+        {
+            get
+            {
+                foreach (var dict in byDistance)
+                {
+                    if (dict.Value.Count > 0)
+                        return true;
+                }
+                return false;
+            }
+        }
+
         public void Add(StateNode state)
         {
             int distance = state.distance;
@@ -151,6 +164,16 @@ namespace AdventOfCode11
             }
             var distDict = byDistance[distance];
             distDict.Add(stateCode, state);
+        }
+
+        public StateNode Contains(int stateCode)
+        {
+            foreach (var distDict in byDistance)
+            {
+                if (distDict.Value.ContainsKey(stateCode))
+                    return distDict.Value[stateCode];
+            }
+            return null;
         }
 
         public bool Contains(StateNode s)
@@ -165,13 +188,18 @@ namespace AdventOfCode11
         public StateNode Dequeue()
         {
             // get one from the smallest queue
-            var smallestDistKey = byDistance.Keys.OrderBy(x => x).First();
-            KeyValuePair<int,StateNode> first = byDistance[smallestDistKey].First();
-
-            StateNode state = first.Value;
-
-            byDistance[smallestDistKey].Remove(first.Key);
-            return state;
+            var orderedKeys = byDistance.Keys.OrderBy(x => x);
+            foreach (var key in orderedKeys)
+            {
+                if (byDistance[key].Count > 0)
+                {
+                    KeyValuePair<int, StateNode> first = byDistance[key].First();
+                    StateNode state = first.Value;
+                    byDistance[key].Remove(first.Key);
+                    return state;
+                }
+            }
+            throw new Exception("Can't dequeue when empty");
         }
 
         public void UpdateDistance(StateNode s, int newDistance)
@@ -497,17 +525,16 @@ namespace AdventOfCode11
         static void ShortestPath()
         {
             var startState = new StateNode { state = InitialState, distance = 0 };
-            var pq = new PriorityQueue<StateNode>();
-            pq.Enqueue(startState);
+            var dq = new DictionaryQueue();
+            dq.Add(startState);
 
-            //var knownStates = new List<StateNode>();
             var knownStates = new Dictionary<Int32, State>();
 
             var start = DateTime.Now;
 
-            while (pq.HasItems)
+            while (dq.HasItems)
             {
-                var current = pq.Dequeue();
+                var current = dq.Dequeue();
 
                 if (current.state.SequenceEqual(EndState))
                 {
@@ -524,18 +551,18 @@ namespace AdventOfCode11
                 {
                     if (!knownStates.ContainsKey(neighbor.ToNumeric()))
                     {
-                        int foundIndex = pq.data.FindIndex(x => x.state.SequenceEqual(neighbor));
-                        var foundState = foundIndex >= 0 ? pq.data[foundIndex] : null;
+                        //int foundIndex = pq.data.FindIndex(x => x.state.SequenceEqual(neighbor));
+                        //var foundState = foundIndex >= 0 ? pq.data[foundIndex] : null;
+                        var foundState = dq.Contains(neighbor.ToNumeric());
 
-                        if (foundIndex == -1)
+                        if (null == foundState)
                         {
-                            pq.Enqueue(new StateNode() { state = neighbor, distance = current.distance + 1 });
+                            dq.Add(new StateNode() { state = neighbor, distance = current.distance + 1 });
                         }
                         else if (foundState.distance > current.distance + 1)
                         {
                             Console.WriteLine("Found state with distance higher than just discovered");
-                            foundState.distance = current.distance + 1;
-                            pq.MinHeapify(foundIndex);
+                            dq.UpdateDistance(foundState, current.distance + 1);
                         }
                     }
                 }
